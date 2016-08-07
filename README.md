@@ -28,7 +28,7 @@ Good, Have fun!
 
 ## Installation:
 
-1.  Manually
+####  Manually
 
 Include the JS SDK on your page once before the \</head> tag.
 
@@ -52,7 +52,18 @@ Include the JS SDK on your page once before the \</head> tag.
 More information and list of browser support in the [W3C website](http://www.w3schools.com/tags/att_script_async.asp).
 
 
+#### Using Bower
 
+```
+bower install --save apester-javascript-sdk
+```
+
+#### Compile from sources
+
+```
+npm install
+gulp
+```
  
 ## Usage
 
