@@ -37,7 +37,7 @@ Include the JS SDK on your page once before the \</head> tag.
 <head>
 	<title>My Site Title</title>
 	
-<script type="text/javascript" src="//static.apester.com/js/sdk/v1.1/apester-sdk.min.js"></script>
+<script type="text/javascript" src="//static.apester.com/js/sdk/v1.1/apester-sdk.min.js" async></script>
 </head>
 <body>
 	<!-- Put your embedded interaction tag  -->
@@ -45,6 +45,14 @@ Include the JS SDK on your page once before the \</head> tag.
 </body>
 </html>
 ```
+
+* The presence of the ```async``` attribute will load Apester Javascript SDK asynchronously with the rest of the page. (the script will be executed while the page continues the parsing)
+* If you prefer to load the script once the page has finished parsing you can replace the ```async``` attribute by the ```defer``` attribute. Note that however **Apester unit will take more time to load**. 
+
+More information and list of browser support in the [W3C website](http://www.w3schools.com/tags/att_script_async.asp).
+
+
+
  
 ## Usage
 
