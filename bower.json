@@ -1,0 +1,22 @@
+{
+  "name": "apester-javascript-sdk",
+  "description": "Apester Javascript SDK",
+  "version": "2.0.0",
+  "main": "dist/apester-javascript-sdk.js",
+  "authors": [
+    "Apester"
+  ],
+  "license": "MIT",
+  "keywords": [
+    "Apester",
+    "Javascript"
+  ],
+  "homepage": "https://github.com/ApesterDevelopers/javascript-sdk",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ]
+}
