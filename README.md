@@ -28,8 +28,23 @@ Good, Have fun!
 
 ## Installation:
 
+1.  Manually
+
 Include the JS SDK on your page once before the \</head> tag.
-`<script type="text/javascript" src="//static.apester.com/js/sdk/v1.1/apester-sdk.min.js"></script>`
+
+```html
+<html>
+<head>
+	<title>My Site Title</title>
+	
+<script type="text/javascript" src="//static.apester.com/js/sdk/v1.1/apester-sdk.min.js"></script>
+</head>
+<body>
+	<!-- Put your embedded interaction tag  -->
+	<interaction id="1234"></interaction>
+</body>
+</html>
+```
  
 ## Usage
 
