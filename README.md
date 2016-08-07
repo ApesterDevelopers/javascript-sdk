@@ -63,3 +63,7 @@ To embed an item in your article, use the following code:
 |---------|--------------|--------------|
 | Regular  |     `<interaction id="#"></interaction>`    | interaction id     |               
 | Playlist    |   `<interaction data-random="#"></interaction> `| publisher token |    
+
+## Reporting Issues
+
+Please use the [issue tracker](https://github.com/ApesterDevelopers/javascript-sdk/issues) to report issues related to Apester Javascript SDK.
