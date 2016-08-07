@@ -1,6 +1,6 @@
-# Apester SDK
+# Apester Javascript SDK
 
-### Overview
+## Overview
 
 **Apster SDK Script**,
 Apester SDK script is designed to add support for Apester interaction tags in web pages.
@@ -26,13 +26,15 @@ Good, Have fun!
 
 -The Apester R&D Team
 
-## How To Use:
+## Installation:
 
 Include the JS SDK on your page once before the \</head> tag.
 `<script type="text/javascript" src="//static.apester.com/js/sdk/v1.1/apester-sdk.min.js"></script>`
  
+## Usage
 
-Then, to embed an item in your article, use this embed code:
+
+To embed an item in your article, use the following code:
 
 | Media Type  | HTML to embed unit  | # | 
 |---------|--------------|--------------|
