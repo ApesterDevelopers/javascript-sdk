@@ -1,76 +1,84 @@
 var ApesterSDK = (function () {
-    var scraper = ApesterScraper;
+    var dataProvider = new ApesterData();
     var interactionElements = [];
+    var utils = ApesterDOM.getInstance();
     var config = ApesterConfig.getInstance();
     var interactions = [];
     var pageData = {};
-    var isSent = false;
     var isRendered = false;
 
-    Function.prototype.ApesterBind = (function () {
-        if (!Function.prototype.bind) {
-            return function (oThis) {
-                if (typeof this !== 'function') {
-                    // closest thing possible to the ECMAScript 5
-                    // internal IsCallable function
-                    throw new TypeError('Function.prototype.bind - what is trying to be bound is not callable');
-                }
-
-                var aArgs = Array.prototype.slice.call(arguments, 1),
-                    fToBind = this,
-                    fNOP = function () {
-                    },
-                    fBound = function () {
-                        return fToBind.apply(this instanceof fNOP
-                                ? this
-                                : oThis,
-                            aArgs.concat(Array.prototype.slice.call(arguments)));
-                    };
-
-                if (this.prototype) {
-                    // Function.prototype doesn't have a prototype property
-                    fNOP.prototype = this.prototype;
-                }
-                fBound.prototype = new fNOP();
-
-                return fBound;
-            };
-        } else {
-            return Function.prototype.bind;
-        }
-    })();
-
     // only run once
-    if (!scraper.apesterSDKPresent) {
+    if (!dataProvider.apesterSDKPresent) {
         onDocumentReady(render);
+
+        sendLoadedData();
     } else {
 
         // bye bye :)
         console.error("ApesterSDK already loaded, make sure to include it only once!");
     }
 
-    function render() {
+    /**
+     * Send 'apester-sdk-loaded' event
+     */
+    function sendLoadedData() {
+        var data = {
+            event: 'apester-sdk-loaded',
+            properties: {
+                'sdkVersion': config.VERSION,
+                'sdkType': config.TYPE
+            },
+            metadata: {
+                'language': window.navigator.userLanguage || window.navigator.language,
+                'referrer': document.location.href,
+                'screenHeight': screen.height + "",
+                'screenWidth': screen.width + ""
+            }
+        };
+        utils.cleanData(data);
+        ApesterEvents.sendJSON(config.eventCollectorUrl, data);
 
-        interactionElements = scraper.findInteractionTags();
-        // Sometimes, we call render function twice as we register few DOM ready events.
+    }
+
+
+    /**
+     * @desc
+     * Find interaction tags in the DOM and create ApesterInteraction object and timer couple
+     * gather, adapt and send data
+     */
+    function render() {
+        interactionElements = dataProvider.findInteractionTags();
         if (!isRendered) {
             isRendered = true;
 
             // Display
             //TODO: build a strategy/template-method here
             for (var i = 0; i < interactionElements.length; i++) {
-                var interaction = new ApesterInteraction(interactionElements[i]);
-                interactions.push(interaction);
+                var timer = new ApesterTimer();
+                var interaction = new ApesterInteraction(interactionElements[i], timer);
+                interactions.push({interaction: interactionElements[i], timer: timer});
                 interaction.display();
             }
 
-            // scrape, adapt and send!
-            scrapeData();
+            // parse, adapt and send!
+            parseData();
             adaptData();
             sendData();
         }
     }
 
+    /**
+     * @desc
+     * Collect data
+     */
+    function parseData() {
+        pageData = dataProvider.collect();
+    }
+
+    /**
+     * @desc
+     * Adapt data collected to match eventCollector scheme
+     */
     function adaptData() {
         var data = pageData;
         var metaData = {
@@ -96,131 +104,37 @@ var ApesterSDK = (function () {
         };
     }
 
-    function scrapeData() {
-        pageData = scraper.collect();
-    }
 
+    /**
+     * @desc
+     * When there are no units, we send only page data,
+     * otherwise we subscribe messagesRouter to listen to post messages.
+     */
     function sendData() {
         if (interactions.length > 0) {
 
             // yay units!  Add event to trigger iframe resize
-            window.addEventListener('message', messagesHandler);
+            window.addEventListener('message', messagesRouter);
         } else {
 
             // nay units! just send page data
             // NOTE: Only if we don't have other embedded scripts ...
-            if (!scraper.apesterEmbeddedPresent) {
-                sendDataToCollector();
+            if (!dataProvider.apesterEmbeddedPresent) {
+                sendDataToCollector(pageData);
             } else {
                 console.log('ApesterSDK sleeps, ApesterEmbedded is here!');
             }
         }
     }
 
-    function sendDataToCollector() {
-        try {
-            var xmlHttp = new XMLHttpRequest();
-            xmlHttp.onreadystatechange = function (state) {
-                if (xmlHttp.response && xmlHttp.readyState === 4 && xmlHttp.status === 200) {
-                    isSent = true;
-                    console.log(xmlHttp.response);
-                }
-            };
-
-            if (pageData && !isSent) {
-                xmlHttp.open("POST", config.eventCollectorUrl, true); // true for asynchronous
-                xmlHttp.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
-                xmlHttp.send(JSON.stringify(pageData));
-                console.log("SDK DATA PAYLOAD", pageData);
-            }
-        } catch (e) {
-            console.error('Send data to ' + config.eventCollectorUrl + ' failed: ', e);
-        }
-    }
-
-    function findInteractionContainerByID(id) {
-        var interactions = interactionElements;
-        for (var i = 0; i < interactions.length; i = i + 1) {
-            var currentInteraction = interactions[i];
-            if (currentInteraction.id === id) {
-                return interactions.splice(i, 1)[0];
-            }
-        }
-
-
-        for (var i = 0; i < interactions.length; i = i + 1) {
-            var currentInteraction = interactions[i];
-            if (currentInteraction.dataset.random) {
-                return interactions.splice(i, 1)[0];
-            }
-        }
-
-    }
-
-
-    function messagesHandler(event) {
-        if (event.origin.search("qmerce|apester|localhost") > -1) {
-            if (event.data.interaction) {
-                var interaction = event.data.interaction;
-                var interactionDimensions = {};
-
-                interactionDimensions.interactionId = interaction.interactionId;
-                interactionDimensions.width = (interaction.data.size || {}).width || 600;
-                interactionDimensions.height = (interaction.data.size || {}).height > 0 ? (interaction.data.size || {}).height - 40 : 338;
-
-                // contest poll is created with the correct height on the editor side so
-                // we don't need to subtract 40px
-                if (interaction.layout.directive === 'contest-poll') {
-                    interactionDimensions.height += 40;
-                }
-
-                var interactionTag = findInteractionContainerByID(event.data.interaction.interactionId);
-                if (interactionTag) {
-                    adjustIframeSize(interactionDimensions, interactionTag);
-                    addInteractionData(interaction);
-                    cleanData(pageData);
-                    sendDataToCollector();
-                    sendMessageToInteractionIFrame(interactionTag);
-                }
-            }
-
-            if (event.data.timeout) {
-                var interactionId = event.data.interactionId;
-                var interactionTag = findInteractionContainerByID(interactionId);
-                if (interactionTag) {
-
-                    var interactionDimensions = {};
-                    interactionDimensions.interactionId = interactionId;
-                    interactionDimensions.width = 0;
-                    interactionDimensions.height = 0;
-                    adjustIframeSize(interactionDimensions, interactionTag);
-                    hideInteraction(interactionTag);
-
-                }
-            }
-        }
-    }
-
-    //TODO: remove this ASAP. provide a fallback option for non-loading interactions.
-    function hideInteraction(elm) {
-        setTimeout(function () {
-            elm.style.display = "none";
-        }, 3100);
-    }
-
-    function cleanData(obj) {
-        for (var key in obj) {
-            if (obj[key] === null || typeof obj[key] === 'undefined' || obj[key].length == 0) {
-                delete obj[key];
-            } else if (typeof obj[key] === 'object') {
-                cleanData(obj[key]);
-            }
-        }
-    }
-
+    /**
+     * @desc
+     * Add interaction and add it to pageData
+     * @param interaction
+     */
     function addInteractionData(interaction) {
-        var interactionData = scraper.collectInteractionData(interaction);
-        var data = pageData;
+        var interactionData = dataProvider.collectInteractionData(interaction);
+        var data = JSON.parse(JSON.stringify(pageData)); // clone pageData
 
         // metadata
         data.metadata.mediaChannelId = interactionData.publisherId;
@@ -238,6 +152,127 @@ var ApesterSDK = (function () {
 
         // sessionId
         data.sessionId = interactionData.sessionId;
+
+        return data;
+    }
+
+    /**
+     * @desc
+     * Send adapted data with the interaction data added to eventCollector
+     * @param data {Object}
+     */
+    function sendDataToCollector(data) {
+        ApesterEvents.sendJSON(config.eventCollectorUrl, data);
+    }
+
+
+    //TODO: Optimize for better lookup/**/
+    function findInteractionContainerByID(id) {
+        for (var i = 0; i < interactions.length; i = i + 1) {
+            var currentInteraction = interactions[i].interaction;
+            if (currentInteraction.id === id) {
+                return interactions.splice(i, 1)[0];
+            }
+        }
+    }
+
+    function interactionLoadedHandler(interaction) {
+        var interactionDimensions = {};
+        interactionDimensions.interactionId = interaction.interactionId;
+        interactionDimensions.width = (interaction.data.size || {}).width || 600;
+        interactionDimensions.height = (interaction.data.size || {}).height > 0 ? (interaction.data.size || {}).height - 40 : 338;
+
+        // contest poll is created with the correct height on the editor side so
+        // we don't need to subtract 40px
+        if (interaction.layout.directive === 'contest-poll') {
+            interactionDimensions.height += 40;
+        }
+
+        var interactionCouple = findInteractionContainerByID(interaction.interactionId);
+        if (interactionCouple) {
+
+            // clear timeout timer.
+            var loadedIn = interactionCouple.timer.clear();
+
+            // process data collection
+            var interactionTag = interactionCouple.interaction;
+            adjustIframeSize(interactionDimensions, interactionTag);
+            setListeners(interactionTag);
+            var data = addInteractionData(interaction);
+            utils.cleanData(data);
+
+            // if(loadedIn) {
+            //     data.properties.loadTime = loadedIn;
+            // }
+            sendDataToCollector(data);
+            sendMessageToInteractionIFrame(interactionTag);
+        }
+    }
+
+    function interactionTimeoutHandler(interactionId) {
+        var interactionCouple = findInteractionContainerByID(interactionId);
+        if (interactionCouple) {
+            var interactionTag = interactionCouple.interaction;
+            var interactionDimensions = {};
+            interactionDimensions.interactionId = interactionId;
+            interactionDimensions.width = 0;
+            interactionDimensions.height = 0;
+            adjustIframeSize(interactionDimensions, interactionTag);
+            hideInteraction(interactionTag);
+
+            // dispatch timeout event.
+            var data = {
+                event: "apester-sdk-timeout",
+                properties: {
+                    'sdkVersion': config.VERSION,
+                    'sdkType': config.TYPE,
+                    'interactionId': interactionId
+                },
+                metadata: {
+                    'language': window.navigator.userLanguage || window.navigator.language,
+                    'referrer': document.location.href,
+                    'screenHeight': screen.height + "",
+                    'screenWidth': screen.width + "",
+                    'currentUrl': interactionTag.src
+                }
+            };
+            utils.cleanData(data);
+            ApesterEvents.sendJSON(config.eventCollectorUrl, data);
+        }
+    }
+
+    function messagesRouter(event) {
+        if (event.origin.search("qmerce|apester|localhost") > -1) {
+            if (event.data.interaction) {
+                interactionLoadedHandler(event.data.interaction);
+            }
+
+            if (event.data.timeout) {
+                interactionTimeoutHandler(event.data.interactionId)
+            }
+        }
+    }
+
+    function setListeners(interactionTag) {
+
+        // sending 'interaction seen' message back to iframe
+        function reportSeen(evtElement) {
+            var eventInteractionOrChannelId = evtElement.id;
+
+            // We check that the event we recived was triggered by our interaction.
+            if (eventInteractionOrChannelId === interactionTag.id) {
+                evtElement.querySelector('iframe').contentWindow.postMessage('interaction seen', "*");
+            }
+        }
+
+        utils.setViewportListeners(interactionTag, reportSeen);
+    }
+
+    //TODO: remove this ASAP. provide a fallback option for non-loading interactions.
+    function hideInteraction(elm) {
+        setTimeout(function () {
+            elm.style.display = 'none';
+        }, 3100);
     }
 
     /**
@@ -247,8 +282,8 @@ var ApesterSDK = (function () {
      * @returns {
      */
     function adjustIframeSize(recivedDimension, interaction) {
-        try {
-            var iframe = interaction.getElementsByTagName('iframe')[0];
+        var iframe = interaction.getElementsByTagName('iframe')[0];
+        if (iframe) {
             var id = interaction.id || interaction.dataset.random;
 
             // Change DOM id identifier to match actual interaction id
@@ -259,51 +294,7 @@ var ApesterSDK = (function () {
             resizeLoader(id, recivedDimension.height, interaction);
             fadeLoaderOut(id, interaction);
             iframe.height = recivedDimension.height;
-
-        } catch (e) {
-            console.error('onIframeMessage error: ', e);
-            return;
         }
-    }
-
-
-    function extractImage(interaction) {
-        var image_url;
-        //Legacy??
-        if (interaction.data) {
-            //Newest model??
-            if (interaction.data.resultsSlides) {
-                interaction.image = interaction.data.resultsSlides.length > 0 ? interaction.data.resultsSlides[0].image : interaction.data.backgroundImage
-            }
-        }
-        //Newer model??
-        if (interaction.image) {
-
-            // collage support. pass full collage object
-            if (interaction.image.hasOwnProperty('background')) {
-                image_url = JSON.stringify(interaction.image);
-            }
-            // old image model
-            else {
-                if (interaction.image.type === "flickr") {
-                    image_url = config.flickr_thumb(interaction.image)
-                } else {
-                    image_url = config.cdn_url + interaction.image.path.replace(/\//g, "%2f");
-                }
-            }
-        } else if (interaction.layout.name.indexOf("video") > -1) {
-            image_url = config.video_thumb(interaction.data.videoId);
-        }
-        return image_url;
-    }
-
-    function extractImageFilter(interaction) {
-        var imageFilter;
-
-        if (interaction.image && interaction.image.filter) {
-            imageFilter = interaction.image.filter;
-        }
-        return imageFilter;
     }
 
     /**
@@ -368,9 +359,9 @@ var ApesterSDK = (function () {
         render: render,
 
         /**
-         * Message router which handles events from the current interaction
+         * Message router which handles events from interactions
          * @param event
          */
-        messagesHandler: messagesHandler
+        messagesRouter: messagesRouter
     }
 })();

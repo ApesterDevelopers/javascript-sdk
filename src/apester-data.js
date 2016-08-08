@@ -3,34 +3,10 @@
  * relevant content suggestions.
  * @constructor
  */
-var ApesterScraper = (function () {
+var ApesterData = function () {
 
-    // private fields
     var data = {};
     var interactions = [];
-    var isPrivate = false;
-    var apesterEmbeddedPresent = false;
-    var apesterSDKPresent = false;
-
-    // private functions
-    function isPublic() {
-        var publicFlag = true;
-        // if (location.hostname.search(/^(preview|stage|integration|private)/) > -1) {
-        //     publicFlag = false;
-        // }
-        // if (this.isPrivate) {
-        //     publicFlag = false;
-        // }
-        //
-        // if (window.isPrivate) {
-        //     publicFlag = false
-        // }
-        return publicFlag
-    }
-
-    function setPrivate(flag) {
-        isPrivate = flag;
-    }
 
     function collectPageData() {
 
@@ -40,24 +16,20 @@ var ApesterScraper = (function () {
             extractMetaTagAttributes(metas[i]);
         }
 
-        // NOTE links overwrite meta!
+        //NOTE: links overwrite meta!
         var links = document.getElementsByTagName('link');
         for (var i = 0; i < links.length; i++) {
             extractLinkTagAttributes(links[i]);
         }
 
-        // Title
-        /*if (typeof data["title"] === 'undefined') {
-         var title = document.title;
-         data["title"] = document.title;
-         }*/
+        //NOTE: Highest priority
         if (document.title && typeof document.title !== 'undefined') {
             data["title"] = document.title;
         }
 
         // URL
         if (typeof data["url"] === 'undefined') {
-            var url = document.location.href
+            var url = document.location.href;
             data["url"] = url;
         }
 
@@ -67,14 +39,6 @@ var ApesterScraper = (function () {
             data["locale"] = lang;
         }
     }
-
-    function pushOrInit(field, value) {
-        if (!data[field]) {
-            data[field] = []
-        }
-        data[field].push(value);
-    }
-
 
     function extractMetaTagAttributes(i_Tag) {
         var prop = i_Tag.getAttribute('property');
@@ -167,26 +131,20 @@ var ApesterScraper = (function () {
         return (' ' + element.className + ' ').indexOf(' ' + cls + ' ') > -1;
     }
 
-    // public
     return {
 
-        // members
         apesterEmbeddedPresent: findEmbedded(),
         apesterSDKPresent: findSDK(),
 
         // functions
         collect: function () {
-            if (isPublic()) {
-                collectPageData();
-            }
+            collectPageData();
             return data;
         },
         findInteractionTags: function () {
             interactions = Array.prototype.slice.call(document.getElementsByTagName('interaction'), 0);
             return interactions;
         },
-
-
 
         /**
          * @desc
@@ -199,7 +157,7 @@ var ApesterScraper = (function () {
             //  var scriptArr = ;
             var parent = scriptTag.parentNode;
             var parentArr = [parent];
-            if(!hasClass(parent, 'ape-interaction')) {
+            if (!hasClass(parent, 'ape-interaction')) {
                 parentArr = [];
                 console.error('ApesterEmbedded parent element must have \'ape-interaction\' class.');
             }
@@ -223,7 +181,6 @@ var ApesterScraper = (function () {
                 "language": interaction.language,
                 "layout": interaction.layout.name,
                 "publisherId": interaction.publisherId,
-                //"slides": slides || [],
                 "title": interaction.title,
                 "updated": interaction.updated,
                 "tags": interaction.tags || [],
@@ -240,4 +197,4 @@ var ApesterScraper = (function () {
             }
         }
     }
-})();
+}

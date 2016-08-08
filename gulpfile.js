@@ -4,11 +4,34 @@ var gulp = require('gulp'),
     uglify = require('gulp-uglify'),
     concat = require('gulp-concat'),
     rename = require('gulp-rename'),
+    s3 = require('gulp-s3'),
     fs = require('fs'),
-    wrap = require("gulp-wrap");
+    wrap = require("gulp-wrap"),
+    aws = readAwsFile();
+
+function readAwsFile() {
+    try {
+        var awsFile = fs.readFileSync('./aws.json');
+        return JSON.parse(awsFile);
+    } catch (err) {
+        if (err.code !== 'ENOENT') throw err;
+        return null;
+    }
+}
+
+gulp.task('scripts', function () {
+    return gulp.src('src/*.js')
+        .pipe(concat('all.js'))
+        .pipe(rename('apester-javascript-sdk.min.js'))
+        .pipe(gulp.dest('dist/'));
+});
+
+gulp.task('watch', function () {
+    gulp.watch('src/*.js', ['scripts']);
+});
 
 gulp.task('default', function () {
-    return gulp.src('./src/*.js')
+    return gulp.src(['src/*.js'])
         .pipe(concat('all.js'))
         .pipe(wrap('try {\n(function(){\n \'use strict\'\n <%= contents %>\n})(); \n}\n catch(e) { ' +
             ' var xmlHttp = new XMLHttpRequest();'
@@ -20,7 +43,6 @@ gulp.task('default', function () {
             'destinationUri: document.location.href' +
             '},' +
             'metadata: {' +
-            'userAgent: navigator.userAgent' +
             '}' +
             '}' +
             '));'
@@ -31,4 +53,11 @@ gulp.task('default', function () {
         .pipe(uglify())
         .pipe(rename('apester-javascript-sdk.min.js'))
         .pipe(gulp.dest('dist/'));
+});
+
+gulp.task('deploy', ['default'], function () {
+    aws.folders.forEach(function (folder) {
+        return gulp.src('./dist/**')
+            .pipe(s3(aws.credentials, {uploadPath: folder}));
+    });
 });

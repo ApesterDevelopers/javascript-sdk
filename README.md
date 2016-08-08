@@ -62,7 +62,7 @@ bower install --save apester-javascript-sdk
 
 ```
 npm install
-gulp
+gulp 
 ```
  
 ## Usage
