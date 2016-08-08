@@ -37,7 +37,7 @@ Include the JS SDK on your page once before the \</head> tag.
 <head>
 	<title>My Site Title</title>
 	
-<script type="text/javascript" src="//static.apester.com/js/sdk/v1.1/apester-sdk.min.js" async></script>
+<script type="text/javascript" src="//static.apester.com/js/sdk/v2.0/apester-javascript-sdk.min.js" async></script>
 </head>
 <body>
 	<!-- Put your embedded interaction tag  -->
@@ -54,9 +54,24 @@ More information and list of browser support in the [W3C website](http://www.w3s
 
 #### Using Bower
 
+To install the latest from master branch
+
 ```
 bower install --save apester-javascript-sdk
 ```
+
+Or by using a specific branch
+
+```
+bower install --save apester-javascript-sdk#branch_name
+```
+
+And also with specific version tag
+
+```
+bower install --save apester-javascript-sdk#2.0.0
+```
+
 
 #### Compile from sources
 
