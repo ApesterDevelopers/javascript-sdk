@@ -14,14 +14,10 @@ var ApesterDOM = (function () {
         /**
          * Composes interaction iframe URL.
          * @param {string} id
-         * @param {boolean} random
          * @returns {string}
          */
-        function composeInteractionSrc(id, random) {
-            if (random) {
-                return config.randomBaseUrl + '/interaction/random/v2/' + id;
-            }
-            return config.playerBaseUrl + '/interaction/' + id;
+        function composeInteractionSrc(id) {
+            return config.playerBaseUrl + '/interaction/' + id + '?sdk=' + config.VERSION + config.TYPE;
         }
 
         /**
@@ -37,40 +33,106 @@ var ApesterDOM = (function () {
             return check;
         }
 
+        /**
+         * @desc
+         * Check if element is inside view port.
+         * @param el
+         * @returns {boolean}
+         */
+        function isElementInViewport(el) {
+
+            //special bonus for those using jQuery
+            if (typeof jQuery === "function" && el instanceof jQuery) {
+                el = el[0];
+            }
+
+            var rect = el.getBoundingClientRect();
+            var elemVisableTop = window.innerHeight - rect.top;
+            var thirtyPixelsVisable = rect.top >= 0 ? elemVisableTop >= 30 : rect.bottom >= 30;
+
+            return (rect.bottom >= 0 && rect.right >= 0
+                && rect.top <= (window.innerHeight || document.documentElement.clientHeight)
+                && rect.left <= (window.innerWidth || document.documentElement.clientWidth)) && thirtyPixelsVisable;
+        }
+
+        /**
+         * @desc
+         * call the callback only if the visibility has changed .
+         * @param el
+         * @param callback
+         * @returns {Function}
+         */
+        function onVisibilityChange(el, callback) {
+            return function () {
+                var visible = isElementInViewport(el);
+                if (visible) {
+                    if (typeof callback == 'function' && visible) {
+                        callback(el);
+                    }
+                }
+            };
+        }
+
+        /**
+         * @desc
+         * Add event listeners to window
+         * @param callback
+         * @returns {void}
+         */
+        function addEventListenersToViewport(callback) {
+
+            // DOMContentLoaded added for IE9+ compatibility
+            var events = config.events,
+                i;
+
+            if (window.addEventListener) {
+                for (i = 0; i < events.length; i++) {
+                    addEventListener(events[i], callback, false);
+                }
+            } else if (window.attachEvent) {
+                for (i = 0; i < events.length; i++) {
+                    attachEvent(events[i], callback);
+                }
+            }
+        }
+
+        /**
+         * @desc
+         * Remove event listeners from window
+         * @param callback
+         * @returns {void}
+         */
+        function removeEventListenersFromViewport(callback) {
+
+            // DOMContentLoaded added for IE9+ compatibility
+            var events = config.events,
+                i;
+
+            if (window.addEventListener) {
+                for (i = 0; i < events.length; i++) {
+                    removeEventListener(events[i], callback, false);
+                }
+            } else if (window.attachEvent) {
+                for (i = 0; i < events.length; i++) {
+                    detachEvent(events[i], callback);
+                }
+            }
+        }
+
         return {
 
             /**
-             * Calls given callback when DOM is ready
-             * @param {function} callback
-             */
-            onDocumentReady: function (callback) {
-                if (document.readyState === 'complete') {
-                    // Register event to document on-load
-                    return callback();
-                }
-
-                document.addEventListener('DOMContentLoaded', callback, false);
-                window.addEventListener('load', callback, false);
-            },
-            /**
              * Builds interaction iframe element.
              * @param {string} id
-             * @param {boolean} random
              * @returns {document.Element}
              */
-            buildInteractionIframe: function (id, random) {
-
-                // TODO: maybe test length == 24?
-                //TODO: when we have get random path we should make this work only with id parameter.
+            buildInteractionIframe: function (id) {
                 var iframe = document.createElement('iframe');
 
-                iframe.src = composeInteractionSrc(id, random);
+                iframe.src = composeInteractionSrc(id);
                 iframe.class = 'qmerce-interaction';
                 iframe.setAttribute('data-interaction-id', id);
-                iframe.setAttribute('from-sdk', '');
-
-                // iframe.setAttribute('sandbox', 'allow-same-origin allow-scripts');
-
+                // iframe.setAttribute('from-sdk', '');
                 iframe.scrolling = 'no';
                 iframe.frameBorder = 0;
                 iframe.width = '100%';
@@ -102,7 +164,7 @@ var ApesterDOM = (function () {
              * @param id {String} id of the interaction
              * @returns {Element}
              */
-            buildGif: function (id, GIF_URL) {
+            buildGif: function (id) {
                 var parent = document.createElement('div');
                 var img = document.createElement('img');
 
@@ -113,7 +175,7 @@ var ApesterDOM = (function () {
                 parent.style.backgroundColor = 'white';
 
                 img.className = 'ape_img_' + id;
-                img.src = GIF_URL;
+                img.src = config.GIF_URL;
                 img.style.height = '100px';
                 img.style.width = '100px';
                 img.style.display = 'block';
@@ -127,53 +189,45 @@ var ApesterDOM = (function () {
 
                 return parent;
             },
-            isMobileDevice: isMobileDevice(),
 
             /**
-             * Check if element is inside view port.
-             * @param el
-             * @returns {boolean}
-             */
-            isElementInViewport: function (el) {
-                //special bonus for those using jQuery
-                if (typeof jQuery === "function" && el instanceof jQuery) {
-                    el = el[0];
-                }
-
-                var rect = el.getBoundingClientRect();
-
-                var elemVisableTop = window.innerHeight - rect.top;
-                var thirtyPixelsVisable = rect.top >= 0 ? elemVisableTop >= 30 : rect.bottom >= 30;
-
-                return (rect.bottom >= 0 && rect.right >= 0
-                    && rect.top <= (window.innerHeight || document.documentElement.clientHeight)
-                    && rect.left <= (window.innerWidth || document.documentElement.clientWidth)) && thirtyPixelsVisable;
-            },
-
-            /**
-             * Visability change handler.
+             * @desc
+             * Set onVisibilityChange and viewport events listeners, callback will be called only once.
              * @param el
              * @param callback
-             * @returns {Function}
+             * @returns {void}
              */
-            onVisibilityChange: function (el, callback) {
-                return function () {
-                    var visible = this.isElementInViewport(el);
-                    if (visible) {
-                        if (typeof callback == 'function' && visible) {
-                            callback(el);
-                        }
-                    }
-                }.bind(this);
-            }
+            setViewportListeners: function (el, callback) {
+                var handler = onVisibilityChange(el, function (event) {
+                    callback(event);
 
+                    // listen only once
+                    removeEventListenersFromViewport(handler);
+                });
+
+                // Add multiple events to know when container element is in viewport (interaction seen)
+                addEventListenersToViewport(handler);
+
+                // trigger on set
+                handler();
+            },
+
+            cleanData: function (obj) {
+                for (var key in obj) {
+                    if (obj[key] === null || typeof obj[key] === 'undefined' || obj[key].length == 0) {
+                        delete obj[key];
+                    } else if (typeof obj[key] === 'object') {
+                        this.cleanData(obj[key]);
+                    }
+
+                }
+            },
+
+            isMobileDevice: isMobileDevice()
         };
     }
 
     return {
-
-        // Get the Singleton instance if one exists
-        // or create one if it doesn't
         getInstance: function () {
 
             if (!instance) {

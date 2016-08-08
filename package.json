@@ -1,25 +1,26 @@
 {
-  "name": "apester-javascript-sdk",
+  "name": "apester-sdk",
   "version": "2.0.0",
-  "description": "Apester Javascript SDK",
-  "main": "dist/apester-sdk.js",
+  "description": "Apester SDK to render interactions",
+  "main": "apester-sdk.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/ApesterDevelopers/javascript-sdk"
+    "url": "https://github.com/Qmerce/apester-sdk.git"
   },
   "author": "Apester",
-  "license": "MIT",
+  "license": "ISC",
   "bugs": {
-    "url": "https://github.com/ApesterDevelopers/javascript-sdk/issues"
+    "url": "https://github.com/Qmerce/apester-sdk/issues"
   },
-  "homepage": "https://github.com/ApesterDevelopers/javascript-sdk",
+  "homepage": "https://github.com/Qmerce/apester-sdk",
   "devDependencies": {
     "gulp": "^3.8.11",
     "gulp-concat": "^2.6.0",
     "gulp-rename": "^1.2.2",
+    "gulp-s3": "^0.3.0",
     "gulp-uglify": "^1.2.0",
     "gulp-wrap": "^0.13.0"
   }
