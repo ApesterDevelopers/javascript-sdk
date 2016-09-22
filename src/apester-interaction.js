@@ -8,8 +8,18 @@ var ApesterInteraction = function (containerElement, timer) {
     this.containerElement = containerElement;
     this.config = ApesterConfig.getInstance();
     this.utils = ApesterDOM.getInstance();
-    this.isRandom = this.containerElement.dataset.random ? true : false;
-    this.id = this.isRandom ? this.containerElement.dataset.random : this.containerElement.id;
+
+    // We use data-token in order to receive the token instead of
+    // data-random, in order for backward compatability we need to support data-random
+    // as well.
+
+    this.channelToken =  this.containerElement.dataset.random || this.containerElement.dataset.token;
+    this.id = this.channelToken || this.containerElement.id;
+    this.context = this.containerElement.dataset.context;
+    this.channelId = this.containerElement.dataset.channelId;
+
+
+
 };
 
 ApesterInteraction.prototype = {
@@ -30,25 +40,35 @@ ApesterInteraction.prototype = {
     display: function () {
 
         //If it's a random interaction we ask for the interaction to display.
-        if (this.isRandom) {
-            var path = this.config.displayBaseUrl + '/tokens/' + this.id + '/interactions/random';
-            ApesterEvents.fetch("GET", path, function (data) {
-                this.interaction = data;
-                //this.token = this.id;
-                this.id = data.interactionId;
+        if (this.context && this.channelToken) {
+            var path = this.config.displayBaseUrl + '/tokens/' + this.id + '/contexts/' + encodeURIComponent(window.location.href) + '/interaction';
+
+            ApesterEvents.fetch(path, function (response) {
+                this.interaction = response.payload;
+                this.id = response.payload.interactionId;
                 this.containerElement.id = this.id;
                 this.setChainOfResponsibility();
             }.bind(this), this.displayFailedCallback.bind(this));
-        } else {
 
-            //We test if the interaction may be displayed.
-            var path = this.config.displayBaseUrl + '/interactions/' + this.id + '/display';
-            ApesterEvents.fetch("GET", path, function (data) {
-                this.interaction = data;
+            //todo test this behavior
+        } else if (this.channelToken) {
+            var path = this.config.displayBaseUrl + '/tokens/' + this.id + '/interactions/random';
+            ApesterEvents.fetch(path, function (response) {
+                this.interaction = response.payload;
+                //this.token = this.id;
+                this.id = response.payload.interactionId;
+                this.containerElement.id = this.id;
                 this.setChainOfResponsibility();
             }.bind(this), this.displayFailedCallback.bind(this));
 
-            return this;
+        } else if(this.id) {
+
+            //We test if the interaction may be displayed.
+            var path = this.config.displayBaseUrl + '/interactions/' + this.id + '/display';
+            ApesterEvents.fetch(path, function (response) {
+                this.interaction = response.payload;
+                this.setChainOfResponsibility();
+            }.bind(this), this.displayFailedCallback.bind(this));
         }
     },
 
@@ -66,7 +86,7 @@ ApesterInteraction.prototype = {
                 'screenWidth': screen.width + ""
             }
         };
-        if (this.isRandom) {
+        if (this.channelToken) {
             data.properties.channelToken = this.id;
         } else {
             data.properties.interactionId = this.id;
@@ -101,8 +121,7 @@ ApesterInteraction.prototype = {
         this.utils.cleanData(data);
         ApesterEvents.sendJSON(this.config.eventCollectorUrl, data);
         return this;
-    }
-    ,
+    },
 
     /**
      * Creating a loader GIF, only for none mobile devices.
@@ -110,9 +129,12 @@ ApesterInteraction.prototype = {
      */
     createLoader: function () {
         var containerElement = this.containerElement;
+        var interactionHeight = this.utils.setHeight(this.interaction),
+            interactionWidth = this.interaction.data.size.width || 600;
+        var interactionMargin = containerElement.dataset.verticalMargin || 0;
 
         // Set the size of the container containerElement
-        this.utils.setElementStyle(containerElement);
+        this.utils.setElementStyle(containerElement, interactionHeight, interactionWidth, interactionMargin);
 
         // NOTE: We create a GIF loader only for none mobile devices.
         if (!this.utils.isMobileDevice) {
@@ -121,8 +143,7 @@ ApesterInteraction.prototype = {
         }
 
         return this;
-    }
-    ,
+    },
 
     /**
      * Create Iframe with the required source
@@ -132,8 +153,7 @@ ApesterInteraction.prototype = {
         var iframe = this.utils.buildInteractionIframe(this.id);
         this.containerElement.appendChild(iframe);
         return this;
-    }
-    ,
+    },
 
     setTimeout: function () {
         function timeoutCallback(id) {
@@ -147,5 +167,4 @@ ApesterInteraction.prototype = {
         this.timer.start(timeoutCallback.bind(null, this.id));
         return this;
     }
-}
-;
+};

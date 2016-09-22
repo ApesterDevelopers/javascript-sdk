@@ -138,7 +138,8 @@ var ApesterDOM = (function () {
                 iframe.width = '100%';
                 iframe.height = 0;
                 iframe.style.maxWidth = '600px';
-                iframe.style.margin = '0 auto';
+                iframe.style.display = 'block';
+                iframe.style.setProperty('margin', '0 auto', 'important');
 
                 if (document.body.clientWidth < 600) {
                     iframe.height = 400;
@@ -149,13 +150,13 @@ var ApesterDOM = (function () {
              * @desc
              * init base styling on a single ".ape-interaction" div
              */
-            setElementStyle: function (node) {
+            setElementStyle: function (node, height, width, margin) {
                 node.style.width = '100%';
-                node.style.maxWidth = '600px';
-                node.style.margin = '0 auto';
+                node.style.maxWidth = width + "px";
+                node.style.margin = margin + ' auto';
                 node.style.display = 'block';
                 node.style.position = 'relative';
-                node.style.minHeight = '350px';
+                node.style.minHeight = height + "px";
             },
 
             /**
@@ -182,13 +183,42 @@ var ApesterDOM = (function () {
                 img.style.top = '50%';
                 img.style.left = '50%';
                 img.style.position = 'absolute';
-                img.style.transform = 'translate(-50%,-50%)';
-                img.style['margin-top'] = '-22px';
+                img.style['margin-top'] = '-50px';
+                img.style['margin-left'] = '-50px';
+                img.style.setProperty('background', 'transparent', 'important');
 
                 parent.appendChild(img);
 
                 return parent;
             },
+
+            /**
+             * Determines interaction height based on type of interaction (countdown/video) or if it got updated
+             * @returns {*}
+             */
+            setHeight: function (interaction) {
+                var _isContestPoll = !!interaction.data.preResult; // Check whether the interaction is countdown
+                var _isVideo = !!interaction.data.videoId; // Check whether the interaction is video
+
+                function _updatedVersion() {
+                    //determines whether the interaction got updated or not
+                    if (interaction.data.updatedVersion) {
+                        return interaction.data.updatedVersion >= 7
+                    }
+                }
+
+                if ((interaction.data.size || {}).height > 0) {
+                    if (_isContestPoll || _isVideo || _updatedVersion()) {
+                        // if the interaction is either countdown,video or updated to version 7, just return the height
+                        return ((interaction.data.size || {}).height || 338);
+                    } else {
+                        return (interaction.data.size || {}).height - 40
+                    }
+                } else {
+                    return 338;
+                }
+            },
+
 
             /**
              * @desc

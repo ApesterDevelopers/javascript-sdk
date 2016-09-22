@@ -15,9 +15,12 @@ var ApesterConfig = (function () {
             cdn_url: "//images.apester.com/",
             eventCollectorUrl: window.location.protocol + '//events.apester.com/event',
             TIMEOUT_DURATION: 30000,
-            VERSION: '2.0',
+            VERSION: '2.1.3',
             TYPE: '',
-            events: ["DOMContentLoaded", "load", "scroll", "resize"]
+            events: ["DOMContentLoaded", "load", "scroll", "resize"],
+            autoPlacementMapUrl: window.location.protocol + '//os.apester.com/prod_mapping.json',
+            supportedTags: ["apester-media","interaction"],
+            supportedClasses: ["ape-interaction","apester-media"]
         };
     }
 

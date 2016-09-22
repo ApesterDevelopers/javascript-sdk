@@ -35,7 +35,7 @@ var ApesterEvents = (function () {
     }
 
     function parseResponse(response) {
-        return JSON.parse(response).payload;
+        return JSON.parse(response);
     }
 
     function send(method, url, str) {
@@ -50,18 +50,18 @@ var ApesterEvents = (function () {
         xhr.send(JSON.stringify(json));
     }
 
-    function fetch(method, url, callback, failed) {
+    function fetch(url, success, failed) {
         function onready() {
             var response = this;
             if (assertSuccess(response, failed)) {
-                var parsed = parseResponse(response.response);
+                var parsed = parseResponse(response.responseText);
 
                 // run callback after parsing
-                callback(parsed);
+                success(parsed);
             }
         }
 
-        var xhr = createXhrRequest(method, url, onready);
+        var xhr = createXhrRequest('GET', url, onready);
         xhr.send(null);
     }
 

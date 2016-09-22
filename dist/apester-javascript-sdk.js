@@ -10,6 +10,8 @@ var ApesterData = function () {
 
     var data = {};
     var interactions = [];
+    var injectSpot = [];
+    var config = ApesterConfig.getInstance();
 
     function collectPageData() {
 
@@ -24,6 +26,12 @@ var ApesterData = function () {
         for (var i = 0; i < links.length; i++) {
             extractLinkTagAttributes(links[i]);
         }
+
+        // Title
+        /*if (typeof data["title"] === 'undefined') {
+         var title = document.title;
+         data["title"] = document.title;
+         }*/
 
         //NOTE: Highest priority
         if (document.title && typeof document.title !== 'undefined') {
@@ -90,30 +98,30 @@ var ApesterData = function () {
 
     function extractLinkTagAttributes(i_Tag) {
         var rel = i_Tag.getAttribute('rel');
-        var content = i_Tag.getAttribute('content'); // don't overwrite with empty values
-        if (content && typeof content !== 'undefined') {
-            switch (i_Tag) {
+        var href = i_Tag.getAttribute('href'); // don't overwrite with empty values
+        if (href && typeof href !== 'undefined') {
+            switch (rel) {
                 case 'image_src':
-                    data['image'] = i_Tag.getAttribute('content');
+                    data['image'] = href;
                     break;
                 case 'canonical':
-                    data['url'] = i_Tag.getAttribute('content');
+                    data['url'] = href;
             }
             return data;
         }
     }
 
     function findSDK() {
-        var scripts = document.getElementsByTagName('script');
-        for (var i = 0; i < scripts.length - 1; i++) {
-            if (/apester-sdk/.test(scripts[i].src)) {
-                return true;
-            }
-            if (/qmerce-sdk/.test(scripts[i].src)) {
-                return true;
-            }
-        }
-        return false;
+        //     var scripts = document.getElementsByTagName('script');
+        //     for (var i = 0; i < scripts.length - 1; i++) {
+        //         if (/apester-sdk/.test(scripts[i].src)) {
+        //             return true;
+        //         }
+        //         if (/qmerce-sdk/.test(scripts[i].src)) {
+        //             return true;
+        //         }
+        //     }
+        //     return false;
     }
 
     function findEmbedded() {
@@ -134,6 +142,33 @@ var ApesterData = function () {
         return (' ' + element.className + ' ').indexOf(' ' + cls + ' ') > -1;
     }
 
+    /**
+     * Gets all interaction tags e.g. <interaction id="1"><interaction> and any other supported tag in ApesterConfig
+     * @returns {Array}
+     */
+    function getSupportedInteractionTags() {
+        var interactions = [];
+        for (var i = 0; i < config.supportedTags.length; i++) {
+            var el = config.supportedTags[i];
+            interactions = interactions.concat(Array.prototype.slice.call(document.getElementsByTagName(el)));
+        }
+        return interactions;
+    }
+
+    /**
+     * Get all interaction elements by classes listed in ApesterConfig,
+     * e.g elements who have the "ape-interaction" class ==> <div class="ape-interaction" id="1"><div>
+     * @returns {Array}
+     */
+    function getSupportedInteractionElements() {
+        var interactions = [];
+        for (var i = 0; i < config.supportedClasses.length; i++) {
+            var el = config.supportedClasses[i];
+            interactions = interactions.concat(Array.prototype.slice.call(document.getElementsByClassName(el)));
+        }
+        return interactions;
+    }
+
     return {
 
         apesterEmbeddedPresent: findEmbedded(),
@@ -144,9 +179,18 @@ var ApesterData = function () {
             collectPageData();
             return data;
         },
-        findInteractionTags: function () {
-            interactions = Array.prototype.slice.call(document.getElementsByTagName('interaction'), 0);
-            return interactions;
+        /**
+         * Collects all interaction DOM elements by supported tags & class names:
+         * @returns {Array}
+         */
+        getInteractionElements: function () {
+            var interactions = getSupportedInteractionTags();
+            return interactions.concat(getSupportedInteractionElements());
+        },
+
+        findInjectionPoint: function (query) {
+            injectSpot = document.querySelector(query);
+            return injectSpot;
         },
 
         /**
@@ -184,6 +228,7 @@ var ApesterData = function () {
                 "language": interaction.language,
                 "layout": interaction.layout.name,
                 "publisherId": interaction.publisherId,
+                //"slides": slides || [],
                 "title": interaction.title,
                 "updated": interaction.updated,
                 "tags": interaction.tags || [],
@@ -341,7 +386,8 @@ var ApesterDOM = (function () {
                 iframe.width = '100%';
                 iframe.height = 0;
                 iframe.style.maxWidth = '600px';
-                iframe.style.margin = '0 auto';
+                iframe.style.display = 'block';
+                iframe.style.setProperty('margin', '0 auto', 'important');
 
                 if (document.body.clientWidth < 600) {
                     iframe.height = 400;
@@ -352,13 +398,13 @@ var ApesterDOM = (function () {
              * @desc
              * init base styling on a single ".ape-interaction" div
              */
-            setElementStyle: function (node) {
+            setElementStyle: function (node, height, width, margin) {
                 node.style.width = '100%';
-                node.style.maxWidth = '600px';
-                node.style.margin = '0 auto';
+                node.style.maxWidth = width + "px";
+                node.style.margin = margin + ' auto';
                 node.style.display = 'block';
                 node.style.position = 'relative';
-                node.style.minHeight = '350px';
+                node.style.minHeight = height + "px";
             },
 
             /**
@@ -385,13 +431,42 @@ var ApesterDOM = (function () {
                 img.style.top = '50%';
                 img.style.left = '50%';
                 img.style.position = 'absolute';
-                img.style.transform = 'translate(-50%,-50%)';
-                img.style['margin-top'] = '-22px';
+                img.style['margin-top'] = '-50px';
+                img.style['margin-left'] = '-50px';
+                img.style.setProperty('background', 'transparent', 'important');
 
                 parent.appendChild(img);
 
                 return parent;
             },
+
+            /**
+             * Determines interaction height based on type of interaction (countdown/video) or if it got updated
+             * @returns {*}
+             */
+            setHeight: function (interaction) {
+                var _isContestPoll = !!interaction.data.preResult; // Check whether the interaction is countdown
+                var _isVideo = !!interaction.data.videoId; // Check whether the interaction is video
+
+                function _updatedVersion() {
+                    //determines whether the interaction got updated or not
+                    if (interaction.data.updatedVersion) {
+                        return interaction.data.updatedVersion >= 7
+                    }
+                }
+
+                if ((interaction.data.size || {}).height > 0) {
+                    if (_isContestPoll || _isVideo || _updatedVersion()) {
+                        // if the interaction is either countdown,video or updated to version 7, just return the height
+                        return ((interaction.data.size || {}).height || 338);
+                    } else {
+                        return (interaction.data.size || {}).height - 40
+                    }
+                } else {
+                    return 338;
+                }
+            },
+
 
             /**
              * @desc
@@ -478,7 +553,7 @@ var ApesterEvents = (function () {
     }
 
     function parseResponse(response) {
-        return JSON.parse(response).payload;
+        return JSON.parse(response);
     }
 
     function send(method, url, str) {
@@ -493,18 +568,18 @@ var ApesterEvents = (function () {
         xhr.send(JSON.stringify(json));
     }
 
-    function fetch(method, url, callback, failed) {
+    function fetch(url, success, failed) {
         function onready() {
             var response = this;
             if (assertSuccess(response, failed)) {
-                var parsed = parseResponse(response.response);
+                var parsed = parseResponse(response.responseText);
 
                 // run callback after parsing
-                callback(parsed);
+                success(parsed);
             }
         }
 
-        var xhr = createXhrRequest(method, url, onready);
+        var xhr = createXhrRequest('GET', url, onready);
         xhr.send(null);
     }
 
@@ -524,8 +599,18 @@ var ApesterInteraction = function (containerElement, timer) {
     this.containerElement = containerElement;
     this.config = ApesterConfig.getInstance();
     this.utils = ApesterDOM.getInstance();
-    this.isRandom = this.containerElement.dataset.random ? true : false;
-    this.id = this.isRandom ? this.containerElement.dataset.random : this.containerElement.id;
+
+    // We use data-token in order to receive the token instead of
+    // data-random, in order for backward compatability we need to support data-random
+    // as well.
+
+    this.channelToken =  this.containerElement.dataset.random || this.containerElement.dataset.token;
+    this.id = this.channelToken || this.containerElement.id;
+    this.context = this.containerElement.dataset.context;
+    this.channelId = this.containerElement.dataset.channelId;
+
+
+
 };
 
 ApesterInteraction.prototype = {
@@ -546,25 +631,35 @@ ApesterInteraction.prototype = {
     display: function () {
 
         //If it's a random interaction we ask for the interaction to display.
-        if (this.isRandom) {
-            var path = this.config.displayBaseUrl + '/tokens/' + this.id + '/interactions/random';
-            ApesterEvents.fetch("GET", path, function (data) {
-                this.interaction = data;
-                //this.token = this.id;
-                this.id = data.interactionId;
+        if (this.context && this.channelToken) {
+            var path = this.config.displayBaseUrl + '/tokens/' + this.id + '/contexts/' + encodeURIComponent(window.location.href) + '/interaction';
+
+            ApesterEvents.fetch(path, function (response) {
+                this.interaction = response.payload;
+                this.id = response.payload.interactionId;
                 this.containerElement.id = this.id;
                 this.setChainOfResponsibility();
             }.bind(this), this.displayFailedCallback.bind(this));
-        } else {
 
-            //We test if the interaction may be displayed.
-            var path = this.config.displayBaseUrl + '/interactions/' + this.id + '/display';
-            ApesterEvents.fetch("GET", path, function (data) {
-                this.interaction = data;
+            //todo test this behavior
+        } else if (this.channelToken) {
+            var path = this.config.displayBaseUrl + '/tokens/' + this.id + '/interactions/random';
+            ApesterEvents.fetch(path, function (response) {
+                this.interaction = response.payload;
+                //this.token = this.id;
+                this.id = response.payload.interactionId;
+                this.containerElement.id = this.id;
                 this.setChainOfResponsibility();
             }.bind(this), this.displayFailedCallback.bind(this));
 
-            return this;
+        } else if(this.id) {
+
+            //We test if the interaction may be displayed.
+            var path = this.config.displayBaseUrl + '/interactions/' + this.id + '/display';
+            ApesterEvents.fetch(path, function (response) {
+                this.interaction = response.payload;
+                this.setChainOfResponsibility();
+            }.bind(this), this.displayFailedCallback.bind(this));
         }
     },
 
@@ -582,7 +677,7 @@ ApesterInteraction.prototype = {
                 'screenWidth': screen.width + ""
             }
         };
-        if (this.isRandom) {
+        if (this.channelToken) {
             data.properties.channelToken = this.id;
         } else {
             data.properties.interactionId = this.id;
@@ -617,8 +712,7 @@ ApesterInteraction.prototype = {
         this.utils.cleanData(data);
         ApesterEvents.sendJSON(this.config.eventCollectorUrl, data);
         return this;
-    }
-    ,
+    },
 
     /**
      * Creating a loader GIF, only for none mobile devices.
@@ -626,9 +720,12 @@ ApesterInteraction.prototype = {
      */
     createLoader: function () {
         var containerElement = this.containerElement;
+        var interactionHeight = this.utils.setHeight(this.interaction),
+            interactionWidth = this.interaction.data.size.width || 600;
+        var interactionMargin = containerElement.dataset.verticalMargin || 0;
 
         // Set the size of the container containerElement
-        this.utils.setElementStyle(containerElement);
+        this.utils.setElementStyle(containerElement, interactionHeight, interactionWidth, interactionMargin);
 
         // NOTE: We create a GIF loader only for none mobile devices.
         if (!this.utils.isMobileDevice) {
@@ -637,8 +734,7 @@ ApesterInteraction.prototype = {
         }
 
         return this;
-    }
-    ,
+    },
 
     /**
      * Create Iframe with the required source
@@ -648,8 +744,7 @@ ApesterInteraction.prototype = {
         var iframe = this.utils.buildInteractionIframe(this.id);
         this.containerElement.appendChild(iframe);
         return this;
-    }
-    ,
+    },
 
     setTimeout: function () {
         function timeoutCallback(id) {
@@ -663,8 +758,7 @@ ApesterInteraction.prototype = {
         this.timer.start(timeoutCallback.bind(null, this.id));
         return this;
     }
-}
-;
+};
 /**
  * Apester embed component configuration.
  * Set as a singleton for general use.
@@ -682,9 +776,12 @@ var ApesterConfig = (function () {
             cdn_url: "//images.apester.com/",
             eventCollectorUrl: window.location.protocol + '//events.apester.com/event',
             TIMEOUT_DURATION: 30000,
-            VERSION: '2.0',
+            VERSION: '2.1.3',
             TYPE: '',
-            events: ["DOMContentLoaded", "load", "scroll", "resize"]
+            events: ["DOMContentLoaded", "load", "scroll", "resize"],
+            autoPlacementMapUrl: window.location.protocol + '//os.apester.com/prod_mapping.json',
+            supportedTags: ["apester-media","interaction"],
+            supportedClasses: ["ape-interaction","apester-media"]
         };
     }
 
@@ -699,374 +796,450 @@ var ApesterConfig = (function () {
         }
     };
 })();
-var ApesterSDK = (function () {
-    var dataProvider = new ApesterData();
-    var interactionElements = [];
-    var utils = ApesterDOM.getInstance();
-    var config = ApesterConfig.getInstance();
-    var interactions = [];
-    var pageData = {};
-    var isRendered = false;
-
-    // only run once
-    if (!dataProvider.apesterSDKPresent) {
-        onDocumentReady(render);
-
-        sendLoadedData();
-    } else {
-
-        // bye bye :)
-        console.error("ApesterSDK already loaded, make sure to include it only once!");
-    }
-
-    /**
-     * Send 'apester-sdk-loaded' event
-     */
-    function sendLoadedData() {
-        var data = {
-            event: 'apester-sdk-loaded',
-            properties: {
-                'sdkVersion': config.VERSION,
-                'sdkType': config.TYPE
-            },
-            metadata: {
-                'language': window.navigator.userLanguage || window.navigator.language,
-                'referrer': document.location.href,
-                'screenHeight': screen.height + "",
-                'screenWidth': screen.width + ""
-            }
-        };
-        utils.cleanData(data);
-        ApesterEvents.sendJSON(config.eventCollectorUrl, data);
-
-    }
+window.ApesterSDK = window.ApesterSDK || (function () {
+        var dataProvider = new ApesterData();
+        var interactionElements = [];
+        var utils = ApesterDOM.getInstance();
+        var config = ApesterConfig.getInstance();
+        var interactions = [];
+        var pageData = {};
+        var isRendered = false;
+        var adaptedData;
+        var injectPoint;
+        var disableEvents = false;
 
 
-    /**
-     * @desc
-     * Find interaction tags in the DOM and create ApesterInteraction object and timer couple
-     * gather, adapt and send data
-     */
-    function render() {
-        interactionElements = dataProvider.findInteractionTags();
-        if (!isRendered) {
-            isRendered = true;
-
-            // Display
-            //TODO: build a strategy/template-method here
-            for (var i = 0; i < interactionElements.length; i++) {
-                var timer = new ApesterTimer();
-                var interaction = new ApesterInteraction(interactionElements[i], timer);
-                interactions.push({interaction: interactionElements[i], timer: timer});
-                interaction.display();
-            }
-
-            // parse, adapt and send!
-            parseData();
-            adaptData();
-            sendData();
+        /**
+         * Default apesterLoadCallback definition, implementors should overwrite this.
+         */
+        if (!window.apesterLoadCallback) {
+            window.apesterLoadCallback = function () {
+                init();
+            };
         }
-    }
 
-    /**
-     * @desc
-     * Collect data
-     */
-    function parseData() {
-        pageData = dataProvider.collect();
-    }
+        // only run once
+        if (window.apesterLoadCallback && !window.apesterLoadCallback.hasRun) {
+            window.apesterLoadCallback.hasRun = true;
+            onDocumentReady(function () {
+                setTimeout(function () {
+                    window.apesterLoadCallback();
+                }, 0)
+            });
+        }
 
-    /**
-     * @desc
-     * Adapt data collected to match eventCollector scheme
-     */
-    function adaptData() {
-        var data = pageData;
-        var metaData = {
-            destinationLanguage: data.locale,
-            destinationTitle: data.title,
-            destinationDescription: data.description,
-            destinationContext: data.tag,
-            destinationPreview: data.image,
-            destinationPublishDate: data.published_time,
-            destinationUpdateDate: data.modified_time,
-            destinationExpirationDate: data.expiration_time,
-            destinationAuthor: data.author,
-            destinationSection: data.section
-        };
+        else {
 
-        var properties = {
-            destinationUri: data.url
-        };
-        pageData = {
-            event: "recommendation_collected",
-            properties: properties,
-            metadata: metaData
-        };
-    }
+            // bye bye :)
+            //console.error("ApesterSDK already loaded, make sure to include it only once!");
+        }
 
+        function init(params) {
+            if (params) {
+                disableEvents = disableEvents || params.disableEvents;
+            }
+            render();
 
-    /**
-     * @desc
-     * When there are no units, we send only page data,
-     * otherwise we subscribe messagesRouter to listen to post messages.
-     */
-    function sendData() {
-        if (interactions.length > 0) {
-
-            // yay units!  Add event to trigger iframe resize
+            // register messageRouter events
             window.addEventListener('message', messagesRouter);
-        } else {
 
-            // nay units! just send page data
-            // NOTE: Only if we don't have other embedded scripts ...
-            if (!dataProvider.apesterEmbeddedPresent) {
-                sendDataToCollector(pageData);
-            } else {
-                console.log('ApesterSDK sleeps, ApesterEmbedded is here!');
+            if (!disableEvents) {
+                sendLoadedData();
             }
-        }
-    }
 
-    /**
-     * @desc
-     * Add interaction and add it to pageData
-     * @param interaction
-     */
-    function addInteractionData(interaction) {
-        var interactionData = dataProvider.collectInteractionData(interaction);
-        var data = JSON.parse(JSON.stringify(pageData)); // clone pageData
-
-        // metadata
-        data.metadata.mediaChannelId = interactionData.publisherId;
-        data.metadata.mediaUserId = interactionData.userId;
-        data.metadata.mediaTitle = interactionData.title;
-        data.metadata.mediaTags = interactionData.tag;
-        data.metadata.mediaCreationDate = interactionData.created;
-        data.metadata.mediaContext = interactionData.slides;
-        data.metadata.mediaUpdateDate = interactionData.updated;
-        data.metadata.mediaExpirationDate = interactionData.expires;
-        data.metadata.mediaLanguage = interactionData.language;
-
-        // properties
-        data.properties.interactionId = interactionData.interactionId;
-
-        // sessionId
-        data.sessionId = interactionData.sessionId;
-
-        return data;
-    }
-
-    /**
-     * @desc
-     * Send adapted data with the interaction data added to eventCollector
-     * @param data {Object}
-     */
-    function sendDataToCollector(data) {
-        ApesterEvents.sendJSON(config.eventCollectorUrl, data);
-    }
-
-
-    //TODO: Optimize for better lookup/**/
-    function findInteractionContainerByID(id) {
-        for (var i = 0; i < interactions.length; i = i + 1) {
-            var currentInteraction = interactions[i].interaction;
-            if (currentInteraction.id === id) {
-                return interactions.splice(i, 1)[0];
-            }
-        }
-    }
-
-    function interactionLoadedHandler(interaction) {
-        var interactionDimensions = {};
-        interactionDimensions.interactionId = interaction.interactionId;
-        interactionDimensions.width = (interaction.data.size || {}).width || 600;
-        interactionDimensions.height = (interaction.data.size || {}).height > 0 ? (interaction.data.size || {}).height - 40 : 338;
-
-        // contest poll is created with the correct height on the editor side so
-        // we don't need to subtract 40px
-        if (interaction.layout.directive === 'contest-poll') {
-            interactionDimensions.height += 40;
+            //DEBUG
+            //console.log('events disabled: ', disableEvents);
         }
 
-        var interactionCouple = findInteractionContainerByID(interaction.interactionId);
-        if (interactionCouple) {
-
-            // clear timeout timer.
-            var loadedIn = interactionCouple.timer.clear();
-
-            // process data collection
-            var interactionTag = interactionCouple.interaction;
-            adjustIframeSize(interactionDimensions, interactionTag);
-            setListeners(interactionTag);
-            var data = addInteractionData(interaction);
-            utils.cleanData(data);
-
-            // if(loadedIn) {
-            //     data.properties.loadTime = loadedIn;
-            // }
-            sendDataToCollector(data);
-            sendMessageToInteractionIFrame(interactionTag);
-        }
-    }
-
-    function interactionTimeoutHandler(interactionId) {
-        var interactionCouple = findInteractionContainerByID(interactionId);
-        if (interactionCouple) {
-            var interactionTag = interactionCouple.interaction;
-            var interactionDimensions = {};
-            interactionDimensions.interactionId = interactionId;
-            interactionDimensions.width = 0;
-            interactionDimensions.height = 0;
-            adjustIframeSize(interactionDimensions, interactionTag);
-            hideInteraction(interactionTag);
-
-            // dispatch timeout event.
+        /**
+         * Send 'apester-sdk-loaded' event
+         */
+        function sendLoadedData() {
             var data = {
-                event: "apester-sdk-timeout",
+                event: 'apester-sdk-loaded',
                 properties: {
                     'sdkVersion': config.VERSION,
-                    'sdkType': config.TYPE,
-                    'interactionId': interactionId
+                    'sdkType': config.TYPE
                 },
                 metadata: {
                     'language': window.navigator.userLanguage || window.navigator.language,
                     'referrer': document.location.href,
                     'screenHeight': screen.height + "",
-                    'screenWidth': screen.width + "",
-                    'currentUrl': interactionTag.src
+                    'screenWidth': screen.width + ""
                 }
             };
             utils.cleanData(data);
             ApesterEvents.sendJSON(config.eventCollectorUrl, data);
-        }
-    }
 
-    function messagesRouter(event) {
-        if (event.origin.search("qmerce|apester|localhost") > -1) {
-            if (event.data.interaction) {
-                interactionLoadedHandler(event.data.interaction);
-            }
-
-            if (event.data.timeout) {
-                interactionTimeoutHandler(event.data.interactionId)
-            }
-        }
-    }
-
-    function setListeners(interactionTag) {
-
-        // sending 'interaction seen' message back to iframe
-        function reportSeen(evtElement) {
-            var eventInteractionOrChannelId = evtElement.id;
-
-            // We check that the event we recived was triggered by our interaction.
-            if (eventInteractionOrChannelId === interactionTag.id) {
-                evtElement.querySelector('iframe').contentWindow.postMessage('interaction seen', "*");
-            }
         }
 
-        utils.setViewportListeners(interactionTag, reportSeen);
-    }
-
-    //TODO: remove this ASAP. provide a fallback option for non-loading interactions.
-    function hideInteraction(elm) {
-        setTimeout(function () {
-            elm.style.display = 'none';
-        }, 3100);
-    }
-
-    /**
-     * Resizing of Iframe according to interaction's requirements.
-     * @param recivedDimension {Object}
-     * @param interaction {HTMLElement}
-     * @returns {
-     */
-    function adjustIframeSize(recivedDimension, interaction) {
-        var iframe = interaction.getElementsByTagName('iframe')[0];
-        if (iframe) {
-            var id = interaction.id || interaction.dataset.random;
-
-            // Change DOM id identifier to match actual interaction id
-            if (interaction.dataset.random) {
-                iframe.dataset.interactionId = recivedDimension.interactionId;
-            }
-
-            resizeLoader(id, recivedDimension.height, interaction);
-            fadeLoaderOut(id, interaction);
-            iframe.height = recivedDimension.height;
-        }
-    }
-
-    /**
-     * Calls given callback when DOM is ready
-     * @param {function} callback
-     */
-    function onDocumentReady(callback) {
-        if (document.readyState === 'complete') {
-            // Register event to document on-load
-            return callback();
-        }
-
-        document.addEventListener('DOMContentLoaded', callback, false);
-        window.addEventListener('load', callback, false);
-    }
-
-    /**
-     * Resize loader wrapper to fit interaction dimensions
-     * @param id
-     * @param height
-     * @param height
-     */
-    function resizeLoader(id, height, interaction) {
-        var loader = interaction.querySelector('.ape_wrapper_' + id);
-        if (loader) {
-            loader.style.height = height + 'px';
-        }
-    }
-
-    /**
-     * Find the loader and apply fadeout transition
-     * @param id
-     * @param interaction
-     */
-    function fadeLoaderOut(id, interaction) {
-        var FADE_SEC = 3;
-        var img = interaction.querySelector('.ape_img_' + id);
-
-        if (img) {
-            setTimeout(function () {
-                img.parentNode.style['transition'] = 'opacity ' + FADE_SEC + 's ease-in-out';
-                img.parentNode.style['-webkit-transition'] = 'opacity ' + FADE_SEC + 's ease-in-out';
-                img.parentNode.style['-moz-transition'] = 'opacity ' + FADE_SEC + 's ease-in-out';
-                img.parentNode.style.opacity = 0;
-
-                setTimeout(function () {
-                    img.parentNode.parentNode.removeChild(img.parentNode);
-                }, FADE_SEC * 1000);
-            }, 100);
-        }
-    }
-
-    /**
-     *  Send post message to iframe to notify renderer we are using EMBEDDED script.
-     **/
-    function sendMessageToInteractionIFrame(interactionTag) {
-        var iframe = interactionTag.getElementsByTagName('iframe')[0];
-        iframe.contentWindow.postMessage("apester-sdk", "*");
-    }
-
-    return {
-        render: render,
 
         /**
-         * Message router which handles events from interactions
-         * @param event
+         * @desc
+         * Find interaction tags in the DOM and create ApesterInteraction object and timer couple
+         * gather, adapt and send data
          */
-        messagesRouter: messagesRouter
-    }
-})();
+        function render() {
+            interactionElements = dataProvider.getInteractionElements();
 
+            if (!isRendered) {
+                isRendered = true;
+
+                // Display
+                //TODO: build a strategy/template-method here
+                for (var i = 0; i < interactionElements.length; i++) {
+                    var timer = new ApesterTimer();
+                    var interaction = new ApesterInteraction(interactionElements[i], timer);
+                    interactions.push({interaction: interactionElements[i], timer: timer});
+                    interaction.display();
+                }
+
+                // parse, adapt and send!
+                parseData();
+
+                //TODO:// change location
+                try {
+                    autoPlacement(sendData);
+                } catch (e) {
+                    console.error('Autoplacement could not run. ', e);
+                }
+
+                var data = adaptData();
+                adaptedData = data;
+            }
+        }
+
+        function autoPlacement(callback) {
+            ApesterEvents.fetch(config.autoPlacementMapUrl, function (data) {
+                var dict = data;
+                var url = pageData.url;
+                if (url) {
+                    var noSlashUrl = url;
+                    if (noSlashUrl.charAt(noSlashUrl.length - 1) === '/')
+                        noSlashUrl = noSlashUrl.substring(0, noSlashUrl.length - 1);
+                    if (dict[url] || dict[noSlashUrl]) {
+                        var info = dict[url] || dict[noSlashUrl];
+                        injectPoint = dataProvider.findInjectionPoint(info.query);
+                        if (injectPoint) {
+                            var interactionElement = document.createElement('interaction');
+                            interactionElement.id = info.id;
+                            interactionElement.setAttribute('data-vertical-margin', '1.7em');
+                            injectPoint.parentNode.insertBefore(interactionElement, injectPoint.nextSibling);
+                            var timer = new ApesterTimer();
+                            var interaction = new ApesterInteraction(interactionElement, timer);
+                            interactions.push({interaction: interactionElement, timer: timer});
+                            interaction.display();
+                        }
+                    }
+                }
+                callback();
+            }, function (e) {
+                console.error('Error retrieving remote placement dictionary', e);
+                callback();
+            });
+        }
+
+        /**
+         * @desc
+         * Collect data
+         */
+        function parseData() {
+            pageData = dataProvider.collect();
+        }
+
+        /**
+         * @desc
+         * Adapt data collected to match eventCollector scheme
+         */
+        function adaptData() {
+            var metaData = {
+                destinationLanguage: pageData.locale,
+                destinationTitle: pageData.title,
+                destinationDescription: pageData.description,
+                destinationContext: pageData.tag,
+                destinationPreview: pageData.image,
+                destinationPublishDate: pageData.published_time,
+                destinationUpdateDate: pageData.modified_time,
+                destinationExpirationDate: pageData.expiration_time,
+                destinationAuthor: pageData.author,
+                destinationSection: pageData.section
+            };
+
+            var properties = {
+                destinationUri: pageData.url
+            };
+            var data = {
+                event: "recommendation_collected",
+                properties: properties,
+                metadata: metaData
+            };
+            return data;
+        }
+
+
+        /**
+         * @desc
+         * When there are no units, we send only page data,
+         * otherwise we subscribe messagesRouter to listen to post messages.
+         */
+        function sendData() {
+            if (interactions.length > 0) {
+
+                // yay units!
+                // wait for message event!
+            } else {
+
+                // nay units! just send page data
+                // no interactions to listen to, so don't listen.
+                // NOTE: Only if we don't have other embedded scripts ...
+                window.removeEventListener('message', messagesRouter);
+                //todo no embedded script?
+                if (!dataProvider.apesterEmbeddedPresent) {
+                    sendDataToCollector(adaptedData);
+                } else {
+                    console.log('ApesterSDK sleeps, ApesterEmbedded is here!');
+                }
+            }
+        }
+
+        /**
+         * @desc
+         * Add interaction and add it to pageData
+         * @param interaction
+         */
+        function addInteractionData(interaction) {
+            var interactionData = dataProvider.collectInteractionData(interaction);
+            var data = JSON.parse(JSON.stringify(adaptedData)); // clone pageData
+
+            // metadata
+            data.metadata.mediaChannelId = interactionData.publisherId;
+            data.metadata.mediaUserId = interactionData.userId;
+            data.metadata.mediaTitle = interactionData.title;
+            data.metadata.mediaTags = interactionData.tag;
+            data.metadata.mediaCreationDate = interactionData.created;
+            data.metadata.mediaContext = interactionData.slides;
+            data.metadata.mediaUpdateDate = interactionData.updated;
+            data.metadata.mediaExpirationDate = interactionData.expires;
+            data.metadata.mediaLanguage = interactionData.language;
+
+            // properties
+            data.properties.interactionId = interactionData.interactionId;
+
+            // sessionId
+            data.sessionId = interactionData.sessionId;
+
+            return data;
+        }
+
+        /**
+         * @desc
+         * Send adapted data with the interaction data added to eventCollector
+         * @param data {Object}
+         */
+        function sendDataToCollector(data) {
+            var date = new Date();
+            var seconds = date.getSeconds();
+
+            // Send recommendation_collected only 1/60 of the times.
+            if (seconds == 0) {
+                ApesterEvents.sendJSON(config.eventCollectorUrl, data);
+            }
+        }
+
+
+//TODO: Optimize for better lookup/**/
+        function findInteractionContainerByID(id) {
+            for (var i = 0; i < interactions.length; i = i + 1) {
+                var currentInteraction = interactions[i].interaction;
+                if (currentInteraction.id === id) {
+                    return interactions.splice(i, 1)[0];
+                }
+            }
+        }
+
+        function interactionLoadedHandler(interaction) {
+            var interactionDimensions = {};
+            interactionDimensions.interactionId = interaction.interactionId;
+            interactionDimensions.width = (interaction.data.size || {}).width || 600;
+            interactionDimensions.height = utils.setHeight(interaction);
+            var interactionCouple = findInteractionContainerByID(interaction.interactionId);
+            if (interactionCouple) {
+
+                // clear timeout timer.
+                var loadedIn = interactionCouple.timer.clear();
+
+                // process data collection
+                var interactionTag = interactionCouple.interaction;
+                adjustIframeSize(interactionDimensions, interactionTag);
+                setListeners(interactionTag);
+                var data = addInteractionData(interaction);
+                utils.cleanData(data);
+
+                // if(loadedIn) {
+                //     data.properties.loadTime = loadedIn;
+                // }
+                sendDataToCollector(data);
+                sendMessageToInteractionIFrame(interactionTag);
+            }
+        }
+
+        function interactionTimeoutHandler(interactionId) {
+            var interactionCouple = findInteractionContainerByID(interactionId);
+            if (interactionCouple) {
+                var interactionTag = interactionCouple.interaction;
+                var interactionDimensions = {};
+                interactionDimensions.interactionId = interactionId;
+                interactionDimensions.width = 0;
+                interactionDimensions.height = 0;
+                adjustIframeSize(interactionDimensions, interactionTag);
+                hideInteraction(interactionTag);
+
+                // dispatch timeout event.
+                var data = {
+                    event: "apester-sdk-timeout",
+                    properties: {
+                        'sdkVersion': config.VERSION,
+                        'sdkType': config.TYPE,
+                        'interactionId': interactionId
+                    },
+                    metadata: {
+                        'language': window.navigator.userLanguage || window.navigator.language,
+                        'referrer': document.location.href,
+                        'screenHeight': screen.height + "",
+                        'screenWidth': screen.width + "",
+                        'currentUrl': interactionTag.src
+                    }
+                };
+                utils.cleanData(data);
+                ApesterEvents.sendJSON(config.eventCollectorUrl, data);
+            }
+        }
+
+        function messagesRouter(event) {
+            if (event.origin.search("qmerce|apester|localhost") > -1) {
+                if (event.data.interaction) {
+                    interactionLoadedHandler(event.data.interaction);
+                }
+
+                if (event.data.timeout) {
+                    interactionTimeoutHandler(event.data.interactionId)
+                }
+            }
+        }
+
+        function setListeners(interactionTag) {
+
+            // sending 'interaction seen' message back to iframe
+            function reportSeen(evtElement) {
+                var eventInteractionOrChannelId = evtElement.id;
+
+                // We check that the event we recived was triggered by our interaction.
+                if (eventInteractionOrChannelId === interactionTag.id) {
+                    evtElement.querySelector('iframe').contentWindow.postMessage('interaction seen', "*");
+                }
+            }
+
+            utils.setViewportListeners(interactionTag, reportSeen);
+        }
+
+        //TODO: remove this ASAP. provide a fallback option for non-loading interactions.
+        function hideInteraction(elm) {
+            setTimeout(function () {
+                elm.style.display = 'none';
+            }, 3100);
+        }
+
+        /**
+         * Resizing of Iframe according to interaction's requirements.
+         * @param recivedDimension {Object}
+         * @param interaction {HTMLElement}
+         * @returns {
+     */
+        function adjustIframeSize(recivedDimension, interaction) {
+            var iframe = interaction.getElementsByTagName('iframe')[0];
+            if (iframe) {
+                var id = interaction.id || interaction.dataset.random;
+
+                // Change DOM id identifier to match actual interaction id
+                if (interaction.dataset.random) {
+                    iframe.dataset.interactionId = recivedDimension.interactionId;
+                }
+
+                resizeLoader(id, recivedDimension.height, interaction);
+                fadeLoaderOut(id, interaction);
+                iframe.height = recivedDimension.height;
+            }
+        }
+
+        /**
+         * Calls given callback when DOM is ready
+         * @param {function} callback
+         */
+        function onDocumentReady(callback) {
+            if (document.readyState === 'complete') {
+                // Register event to document on-load
+                return callback();
+            }
+
+            document.addEventListener('DOMContentLoaded', callback, false);
+            window.addEventListener('load', callback, false);
+        }
+
+        /**
+         * Resize loader wrapper to fit interaction dimensions
+         * @param id
+         * @param height
+         */
+        function resizeLoader(id, height, interaction) {
+            var loader = interaction.querySelector('#ape_wrapper_' + id);
+            if (loader) {
+                loader.style.height = height + 'px';
+            }
+        }
+
+        /**
+         * Find the loader and apply fadeout transition
+         * @param id
+         * @param interaction
+         */
+        function fadeLoaderOut(id, interaction) {
+            var FADE_SEC = 3;
+            var img = interaction.querySelector('.ape_img_' + id);
+
+            if (img) {
+                setTimeout(function () {
+                    img.parentNode.style['transition'] = 'opacity ' + FADE_SEC + 's ease-in-out';
+                    img.parentNode.style['-webkit-transition'] = 'opacity ' + FADE_SEC + 's ease-in-out';
+                    img.parentNode.style['-moz-transition'] = 'opacity ' + FADE_SEC + 's ease-in-out';
+                    img.parentNode.style.opacity = 0;
+
+                    setTimeout(function () {
+                        img.parentNode.parentNode.removeChild(img.parentNode);
+                    }, FADE_SEC * 1000);
+                }, 100);
+            }
+        }
+
+        /**
+         *  Send post message to iframe to notify renderer we are using EMBEDDED script.
+         **/
+        function sendMessageToInteractionIFrame(interactionTag) {
+            var iframe = interactionTag.getElementsByTagName('iframe')[0];
+            iframe.contentWindow.postMessage("apester-sdk", "*");
+        }
+
+        return {
+            Init: init
+        };
+        // render: render,
+        //
+        // /**
+        //  * Message router which handles events from interactions
+        //  * @param event
+        //  */
+        // messagesRouter: messagesRouter
+
+    })();
 /**
  * Created by oriavraham on 04/08/2016.
  */
