@@ -88,7 +88,8 @@ To embed an item in your article, use the following code:
 | Media Type  | HTML to embed unit  | # | 
 |---------|--------------|--------------|
 | Regular  |     `<interaction id="#"></interaction>`    | interaction id     |               
-| Playlist    |   `<interaction data-random="#"></interaction> `| publisher token |    
+| Playlist    |   `<interaction data-token="#"></interaction> `| publisher token |
+| Contextual-Playlist    |   `<interaction data-token="#" context='true' ></interaction> `| publisher token |
 
 ## Reporting Issues
 

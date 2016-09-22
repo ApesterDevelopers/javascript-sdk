@@ -7,6 +7,8 @@ var ApesterData = function () {
 
     var data = {};
     var interactions = [];
+    var injectSpot = [];
+    var config = ApesterConfig.getInstance();
 
     function collectPageData() {
 
@@ -21,6 +23,12 @@ var ApesterData = function () {
         for (var i = 0; i < links.length; i++) {
             extractLinkTagAttributes(links[i]);
         }
+
+        // Title
+        /*if (typeof data["title"] === 'undefined') {
+         var title = document.title;
+         data["title"] = document.title;
+         }*/
 
         //NOTE: Highest priority
         if (document.title && typeof document.title !== 'undefined') {
@@ -87,30 +95,30 @@ var ApesterData = function () {
 
     function extractLinkTagAttributes(i_Tag) {
         var rel = i_Tag.getAttribute('rel');
-        var content = i_Tag.getAttribute('content'); // don't overwrite with empty values
-        if (content && typeof content !== 'undefined') {
-            switch (i_Tag) {
+        var href = i_Tag.getAttribute('href'); // don't overwrite with empty values
+        if (href && typeof href !== 'undefined') {
+            switch (rel) {
                 case 'image_src':
-                    data['image'] = i_Tag.getAttribute('content');
+                    data['image'] = href;
                     break;
                 case 'canonical':
-                    data['url'] = i_Tag.getAttribute('content');
+                    data['url'] = href;
             }
             return data;
         }
     }
 
     function findSDK() {
-        var scripts = document.getElementsByTagName('script');
-        for (var i = 0; i < scripts.length - 1; i++) {
-            if (/apester-sdk/.test(scripts[i].src)) {
-                return true;
-            }
-            if (/qmerce-sdk/.test(scripts[i].src)) {
-                return true;
-            }
-        }
-        return false;
+        //     var scripts = document.getElementsByTagName('script');
+        //     for (var i = 0; i < scripts.length - 1; i++) {
+        //         if (/apester-sdk/.test(scripts[i].src)) {
+        //             return true;
+        //         }
+        //         if (/qmerce-sdk/.test(scripts[i].src)) {
+        //             return true;
+        //         }
+        //     }
+        //     return false;
     }
 
     function findEmbedded() {
@@ -131,6 +139,33 @@ var ApesterData = function () {
         return (' ' + element.className + ' ').indexOf(' ' + cls + ' ') > -1;
     }
 
+    /**
+     * Gets all interaction tags e.g. <interaction id="1"><interaction> and any other supported tag in ApesterConfig
+     * @returns {Array}
+     */
+    function getSupportedInteractionTags() {
+        var interactions = [];
+        for (var i = 0; i < config.supportedTags.length; i++) {
+            var el = config.supportedTags[i];
+            interactions = interactions.concat(Array.prototype.slice.call(document.getElementsByTagName(el)));
+        }
+        return interactions;
+    }
+
+    /**
+     * Get all interaction elements by classes listed in ApesterConfig,
+     * e.g elements who have the "ape-interaction" class ==> <div class="ape-interaction" id="1"><div>
+     * @returns {Array}
+     */
+    function getSupportedInteractionElements() {
+        var interactions = [];
+        for (var i = 0; i < config.supportedClasses.length; i++) {
+            var el = config.supportedClasses[i];
+            interactions = interactions.concat(Array.prototype.slice.call(document.getElementsByClassName(el)));
+        }
+        return interactions;
+    }
+
     return {
 
         apesterEmbeddedPresent: findEmbedded(),
@@ -141,9 +176,18 @@ var ApesterData = function () {
             collectPageData();
             return data;
         },
-        findInteractionTags: function () {
-            interactions = Array.prototype.slice.call(document.getElementsByTagName('interaction'), 0);
-            return interactions;
+        /**
+         * Collects all interaction DOM elements by supported tags & class names:
+         * @returns {Array}
+         */
+        getInteractionElements: function () {
+            var interactions = getSupportedInteractionTags();
+            return interactions.concat(getSupportedInteractionElements());
+        },
+
+        findInjectionPoint: function (query) {
+            injectSpot = document.querySelector(query);
+            return injectSpot;
         },
 
         /**
@@ -181,6 +225,7 @@ var ApesterData = function () {
                 "language": interaction.language,
                 "layout": interaction.layout.name,
                 "publisherId": interaction.publisherId,
+                //"slides": slides || [],
                 "title": interaction.title,
                 "updated": interaction.updated,
                 "tags": interaction.tags || [],
