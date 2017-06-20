@@ -90,7 +90,7 @@ To embed an item in your article, use the following code:
 | Regular  |     `<interaction id="#"></interaction>`    | interaction id     |  |             
 | Playlist    |   `<interaction data-token="#"></interaction> `| publisher token | |
 | Contextual-Playlist    |   `<interaction data-token="#" data-context='true' ></interaction> `| publisher token | |
-| Contextual-Playlist with added tags | <interaction data-token="#" data-context="true" data-tags="tag1, tag2"></interaction> | publisher token | tags relevant to section's context|
+| Contextual-Playlist with added tags | `<interaction data-token="#" data-context="true" data-tags="tag1, tag2"></interaction>` | publisher token | tags relevant to section's context|
 
 ## Reporting Issues
 
