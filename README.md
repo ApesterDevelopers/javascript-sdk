@@ -38,11 +38,11 @@ Include the JS SDK on your page once before the \</head> tag.
 </head>
 <body>
 	<!-- Put Editorial embedded interaction tag  -->
-	<div class="apester-media data-media-id="1234"></interaction>
+	<div class="apester-media data-media-id="1234"></div>
 	
 	
 	<!-- Put Playlist embedded interaction tag  -->
-	<div class="apester-media data-token="1234"></interaction>
+	<div class="apester-media" data-token="1234"></div>
 </body>
 </html>
 ```
