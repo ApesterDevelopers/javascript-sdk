@@ -1,37 +1,34 @@
-# Apester Javascript SDK
+# Apester Header Tag
 
 ## Overview
 
-**Apster SDK Script**,
-Apester SDK script is designed to add support for Apester interaction tags in web pages.
+**Apster Header Tag**,
+Apester Header Tag is designed to add support for Apester interaction tags in web pages.
 
-We've made the SDK script as lean as possible,
+We've made the tag as lean as possible,
 the flow is very simple:
 We test if a media should be displayed, if it doesn't, we don't create anything.
 If it does we create a loader and behind the scenes load your media content.
 When the content is ready we remove the loader and send page metadata to our servers in order to supply
-AWESOME content recommendation for users who interact with your media.
+AWESOME Apester content for users who interact with your media.
 
 What will you be getting from using the SDK?
 
-* Define new html tag <interaction>
-* More stable, scaleable and faster experience.
-* Dynamic embed features and embed­resize.
-* New build for the content recommendation engine ­ fast, smarter and based on user sentiment.
+* The ability to dynamicily add Apester content to you page
 * Monetization ventures available only with SDK.
 
 > "With great power comes great responsibility." - Uncle Ben
 
 Good, Have fun!
 
--The Apester R&D Team
+-The Apesters
 
 ## Installation:
 
 ####  Manually
 
 Include the JS SDK on your page once before the \</head> tag.
-**The SDK script needs to be loaded on each and every page, if you are generating your site content dynamicaly (using Angular's ng-view for example) contact our support for a tailor made solution support@apester.com and open a issue on github**
+**The header tag needs to be loaded on each and every page, if you are generating your site content dynamicaly (using Angular's ng-view for example) contact our support for a tailor made solution support@apester.com and open a issue on github**
 ```html
 <html>
 <head>
@@ -40,11 +37,16 @@ Include the JS SDK on your page once before the \</head> tag.
 <script type="text/javascript" src="//static.apester.com/js/sdk/v2.0/apester-javascript-sdk.min.js" async></script>
 </head>
 <body>
-	<!-- Put your embedded interaction tag  -->
-	<interaction id="1234"></interaction>
+	<!-- Put Editorial embedded interaction tag  -->
+	<div class="apester-media" data-media-id="1234"></div>
+	
+	
+	<!-- Put Playlist embedded interaction tag  -->
+	<div class="apester-media" data-token="1234"></div>
 </body>
 </html>
 ```
+Where data-token is your channel token that can be found in the Apester admin settings
 
 * The presence of the ```async``` attribute will load Apester Javascript SDK asynchronously with the rest of the page. (the script will be executed while the page continues the parsing)
 * If you prefer to load the script once the page has finished parsing you can replace the ```async``` attribute by the ```defer``` attribute. Note that however **Apester unit will take more time to load**. 
