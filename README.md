@@ -43,6 +43,9 @@ Include the JS SDK on your page once before the \</head> tag.
 	
 	<!-- Put Playlist embedded interaction tag  -->
 	<div class="apester-media" data-token="1234"></div>
+	
+	<!-- Put Strip embedded tag  -->
+	<div className="apester-strip" data-channel-tokens="1234"></div>
 </body>
 </html>
 ```
@@ -93,6 +96,8 @@ To embed an item in your article, use the following code:
 | Playlist    |   `<interaction data-token="#"></interaction> `| publisher token | |
 | Contextual-Playlist    |   `<interaction data-token="#" data-context='true' ></interaction> `| publisher token | |
 | Contextual-Playlist with added tags | `<interaction data-token="#" data-context="true" data-tags="tag1, tag2"></interaction>` | publisher token | tags relevant to section's context|
+| Strip  |     `<div className="apester-strip" data-channel-tokens="#"></div>`| publisher token |  |             
+
 
 ## Reporting Issues
 
