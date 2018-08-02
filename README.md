@@ -34,7 +34,7 @@ Include the JS SDK on your page once before the \</head> tag.
 <head>
 	<title>My Site Title</title>
 	
-<script type="text/javascript" src="//static.apester.com/js/sdk/v2.0/apester-javascript-sdk.min.js" async></script>
+<script type="text/javascript" src="https://static.apester.com/js/sdk/latest/apester-sdk.js" async></script>
 </head>
 <body>
 	<!-- Put Editorial embedded interaction tag  -->
