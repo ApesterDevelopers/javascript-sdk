@@ -20,7 +20,7 @@ Good, Have fun!
 ## Installation:
 
 Include the JS SDK on your page once before the `</head>` tag.
-**The header tag needs to be loaded on each and every page, if you are generating your site content dynamicaly (using Angular's ng-view for example) contact our support for a tailor made solution support@apester.com and open a issue on github**
+The header tag needs to be loaded on each and every page, if you are generating your site content dynamicaly (using Angular's ng-view for example) contact our support for a tailor made solution support@apester.com and open a issue on github
 
 ```html
 <html>
