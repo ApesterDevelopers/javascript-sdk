@@ -1,9 +1,0 @@
-{
-  "credentials": {
-    "key": "awsAccessKeyId",
-    "secret": "awsSecretAccessKey",
-    "bucket": "",
-    "region": ""
-  },
-  "folder": ""
-}
