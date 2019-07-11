@@ -24,44 +24,42 @@ The header tag needs to be loaded on each and every page, if you are generating 
 
 ```html
 <html>
-<head>
-	<title>My Site Title</title>
-	
-<script type="text/javascript" src="https://static.apester.com/js/sdk/latest/apester-sdk.js" async></script>
-</head>
-<body>
-	<!-- Put Editorial embedded interaction tag  -->
-	<div class="apester-media" data-media-id="1234"></div>
-	
-	
-	<!-- Put Playlist embedded interaction tag  -->
-	<div class="apester-media" data-token="1234"></div>
-	
-	<!-- Put Strip embedded tag  -->
-	<div className="apester-strip" data-channel-tokens="1234"></div>
-</body>
+  <head>
+    <title>My Site Title</title>
+
+    <script type="text/javascript" src="https://static.apester.com/js/sdk/latest/apester-sdk.js" async></script>
+  </head>
+  <body>
+    <!-- Put Editorial embedded interaction tag  -->
+    <div class="apester-media" data-media-id="1234"></div>
+
+    <!-- Put Playlist embedded interaction tag  -->
+    <div class="apester-media" data-token="1234"></div>
+
+    <!-- Put Strip embedded tag  -->
+    <div className="apester-strip" data-channel-tokens="1234"></div>
+  </body>
 </html>
 ```
 
 Where data-token is your channel token that can be found in the Apester admin settings
 
-* The presence of the ```async``` attribute will load Apester Javascript SDK asynchronously with the rest of the page. (the script will be executed while the page continues the parsing)
-* If you prefer to load the script once the page has finished parsing you can replace the ```async``` attribute by the ```defer``` attribute. Note that however **Apester unit will take more time to load**. 
+- The presence of the `async` attribute will load Apester Javascript SDK asynchronously with the rest of the page. (the script will be executed while the page continues the parsing)
+- If you prefer to load the script once the page has finished parsing you can replace the `async` attribute by the `defer` attribute. Note that however **Apester unit will take more time to load**.
 
 More information and list of browser support in the [W3C website][w3c].
- 
+
 ## Usage
 
 To embed an item in your article, use the following code:
 
-| Media Type  | HTML to embed unit  | # | tags |
-|---------|--------------|--------------|------|
-| Regular  |     `<interaction id="#"></interaction>`    | interaction id     |  |             
-| Playlist    |   `<interaction data-token="#"></interaction> `| publisher token | |
-| Contextual-Playlist    |   `<interaction data-token="#" data-context='true' ></interaction> `| publisher token | |
-| Contextual-Playlist with added tags | `<interaction data-token="#" data-context="true" data-tags="tag1, tag2"></interaction>` | publisher token | tags relevant to section's context|
-| Strip  |     `<div className="apester-strip" data-channel-tokens="#"></div>`| publisher token |  |             
-
+| Media Type                          | HTML to embed unit                                                                            | #              | tags                               |
+| ----------------------------------- | --------------------------------------------------------------------------------------------- | -------------- | ---------------------------------- |
+| Regular                             | `<div class="apester-media" data-media-id="#"></div>`                                         | interaction id |                                    |
+| Playlist                            | `<div class="apester-media" data-token="#"></div>`                                            | channel token  |                                    |
+| Contextual-Playlist                 | `<div class="apester-media" data-token="#" data-context='true' ></div>`                       | channel token  |                                    |
+| Contextual-Playlist with added tags | `<div class="apester-media" data-token="#" data-context="true" data-tags="tag1, tag2"></div>` | channel token  | tags relevant to section's context |
+| Strip                               | `<div className="apester-strip" data-channel-tokens="#"></div>`                               | channel token  |                                    |
 
 ## Reporting Issues
 
@@ -71,7 +69,7 @@ Please use the [issue tracker][issue-tracker] to report issues related to Apeste
 
 The MIT License
 
-Copyright (c) 2018 Apester LTD <https://apester.com>
+Copyright (c) 2019 Apester LTD <https://apester.com>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
